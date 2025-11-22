@@ -12,11 +12,15 @@ provider:
     STAGE: ${self:provider.stage}
     REGION: ${self:provider.region}
   
-  # Use existing IAM role instead of creating one
-  # iam:
-  #   role:
-  #     statements:
-  #       # IAM permissions TBD
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+            - sqs:GetQueueUrl
+          Resource:
+            - !GetAtt TelegramQueue.Arn
 
 package:
   individually: true
@@ -24,11 +28,32 @@ package:
 functions:
   telegramIngress:
     handler: src/handlers/telegram-ingress.handler
+    environment:
+      TELEGRAM_QUEUE_URL: !Ref TelegramQueue
     events:
       - http:
           path: telegram/ingress
           method: post
           cors: true
+
+resources:
+  Resources:
+    TelegramQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${self:provider.stage}-telegram-queue
+        VisibilityTimeout: 300
+        MessageRetentionPeriod: 1209600  # 14 days
+        RedrivePolicy:
+          deadLetterTargetArn: !GetAtt TelegramDLQ.Arn
+          maxReceiveCount: 3
+    
+    TelegramDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${self:provider.stage}-telegram-dlq
+        MessageRetentionPeriod: 1209600  # 14 days
+
 plugins:
   - serverless-plugin-typescript
   - serverless-offline

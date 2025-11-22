@@ -1,0 +1,25 @@
+service: budget-tagger
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: ${opt:region, 'eu-central-1'}
+  stage: ${opt:stage, 'dev'}
+  
+  environment:
+    STAGE: ${self:provider.stage}
+    REGION: ${self:provider.region}
+  
+  iam:
+    role:
+      statements:
+        # IAM permissions TBD
+
+functions:
+  # TBD
+
+plugins:
+  - serverless-plugin-typescript
+  - serverless-offline

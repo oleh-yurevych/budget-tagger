@@ -12,14 +12,23 @@ provider:
     STAGE: ${self:provider.stage}
     REGION: ${self:provider.region}
   
-  iam:
-    role:
-      statements:
-        # IAM permissions TBD
+  # Use existing IAM role instead of creating one
+  # iam:
+  #   role:
+  #     statements:
+  #       # IAM permissions TBD
+
+package:
+  individually: true
 
 functions:
-  # TBD
-
+  telegramIngress:
+    handler: src/handlers/telegram-ingress.handler
+    events:
+      - http:
+          path: telegram/ingress
+          method: post
+          cors: true
 plugins:
   - serverless-plugin-typescript
   - serverless-offline

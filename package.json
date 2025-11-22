@@ -4,8 +4,7 @@
   "description": "Multi-user budget tracking application with Telegram bot and Monobank integration",
   "main": "index.js",
   "scripts": {
-    "deploy": "serverless deploy",
-    "deploy:dev": "serverless deploy --stage dev",
+    "deploy": "serverless deploy --stage dev",
     "deploy:prod": "serverless deploy --stage prod",
     "offline": "serverless offline",
     "test": "jest",

@@ -21,6 +21,11 @@ provider:
             - sqs:GetQueueUrl
           Resource:
             - !GetAtt TelegramQueue.Arn
+        - Effect: Allow
+          Action:
+            - secretsmanager:GetSecretValue
+          Resource:
+            - !Ref TelegramSecret
 
 package:
   individually: true
@@ -30,6 +35,7 @@ functions:
     handler: src/handlers/telegram-ingress.handler
     environment:
       TELEGRAM_QUEUE_URL: !Ref TelegramQueue
+      TELEGRAM_SECRET_NAME: ${self:service}-${self:provider.stage}-telegram-secret
     events:
       - http:
           path: telegram/ingress
@@ -38,6 +44,13 @@ functions:
 
 resources:
   Resources:
+    TelegramSecret:
+      Type: AWS::SecretsManager::Secret
+      Properties:
+        Name: ${self:service}-${self:provider.stage}-telegram-secret
+        Description: Telegram bot webhook secret token for ${self:provider.stage} environment
+        SecretString: 'CHANGE_ME_IN_AWS_CONSOLE'
+    
     TelegramQueue:
       Type: AWS::SQS::Queue
       Properties:

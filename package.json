@@ -24,9 +24,12 @@
   "license": "ISC",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.515.0",
+    "@aws-sdk/client-secrets-manager": "^3.936.0",
     "@aws-sdk/client-sqs": "^3.515.0",
     "@aws-sdk/lib-dynamodb": "^3.515.0",
-    "grammy": "^1.20.3"
+    "env-var": "^7.4.1",
+    "grammy": "^1.20.3",
+    "purify-ts": "^2.1.2"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.136",

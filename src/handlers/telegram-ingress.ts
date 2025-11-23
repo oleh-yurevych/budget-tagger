@@ -1,24 +1,41 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { logger } from '../shared/logger';
+import { getEnv } from '../shared/env';
+import { validateTelegramSecret } from '../shared/secrets';
+import { Maybe } from 'purify-ts/Maybe';
+import KEYS from '../shared/keys';
+import { UnauthorizedError, BadRequestError, getErrorResponse } from '../shared/errors';
 
-const sqsClient = new SQSClient({ region: process.env.REGION });
+const env = getEnv();
+const sqsClient = new SQSClient({ region: env.REGION });
 
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   try {
-    logger.info('Telegram webhook received', { body: event.body });
+    logger.debug('Telegram webhook received', { body: event.body });
 
-    const webhookPayload = event.body ? JSON.parse(event.body) : {};
+    const secretToken = event.headers[KEYS.TELEGRAM_SECRET_HEADER];
+    
+    const validationResult = await validateTelegramSecret(Maybe.fromNullable(secretToken)).run();
+    if (validationResult.isLeft()) {
+      throw new UnauthorizedError(validationResult.extract());
+    }
+    
+    if (!validationResult.extract()) {
+      throw new UnauthorizedError('Invalid secret token');
+    }
+
+    if (!event.body) {
+      throw new BadRequestError('No body in webhook request');
+    }
 
     const command = new SendMessageCommand({
-      QueueUrl: process.env.TELEGRAM_QUEUE_URL,
-      MessageBody: JSON.stringify(webhookPayload),
+      QueueUrl: env.TELEGRAM_QUEUE_URL,
+      MessageBody: event.body,
     });
-
     await sqsClient.send(command);
-    logger.info('Message sent to SQS successfully');
 
     return {
       statusCode: 200,
@@ -26,9 +43,6 @@ export const handler = async (
     };
   } catch (error) {
     logger.error('Error processing webhook', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Internal server error' }),
-    };
+    return getErrorResponse(error);
   }
 };

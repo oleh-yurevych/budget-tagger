@@ -1,0 +1,55 @@
+import { SQSEvent, SQSRecord } from 'aws-lambda';
+import { logger } from '../shared/logger';
+
+export const handler = async (event: SQSEvent): Promise<void> => {
+  logger.info('Processing Telegram messages', { messageCount: event.Records.length });
+
+  for (const record of event.Records) {
+    try {
+      await processMessage(record);
+    } catch (error) {
+      logger.error('Failed to process message', {
+        messageId: record.messageId,
+        error,
+      });
+      // Throw error to trigger DLQ flow after max retries
+      throw error;
+    }
+  }
+};
+
+async function processMessage(record: SQSRecord): Promise<void> {
+  logger.debug('Processing SQS message', {
+    messageId: record.messageId,
+    body: record.body,
+  });
+
+  try {
+    const telegramUpdate = JSON.parse(record.body);
+    
+    logger.info('Telegram update received', {
+      updateId: telegramUpdate.update_id,
+      messageType: getMessageType(telegramUpdate),
+    });
+
+    // TBD: processing logic
+    
+  } catch (error) {
+    logger.error('Invalid message format', {
+      messageId: record.messageId,
+      error,
+    });
+    throw error;
+  }
+}
+
+/**
+ * Determine the type of Telegram update for logging
+ */
+function getMessageType(update: any): string {
+  if (update.message) return 'message';
+  if (update.edited_message) return 'edited_message';
+  if (update.callback_query) return 'callback_query';
+  if (update.inline_query) return 'inline_query';
+  return 'unknown';
+}

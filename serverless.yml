@@ -23,6 +23,13 @@ provider:
             - !GetAtt TelegramQueue.Arn
         - Effect: Allow
           Action:
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:GetQueueAttributes
+          Resource:
+            - !GetAtt TelegramQueue.Arn
+        - Effect: Allow
+          Action:
             - secretsmanager:GetSecretValue
           Resource:
             - !Ref TelegramSecret
@@ -41,6 +48,17 @@ functions:
           path: telegram/ingress
           method: post
           cors: true
+  
+  telegramProcessor:
+    handler: src/handlers/telegram-processor.handler
+    timeout: 60
+    reservedConcurrency: 5
+    events:
+      - sqs:
+          arn: !GetAtt TelegramQueue.Arn
+          batchSize: 1
+          maximumBatchingWindowInSeconds: 0
+          functionResponseType: ReportBatchItemFailures
 
 resources:
   Resources:

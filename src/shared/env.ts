@@ -1,8 +1,22 @@
 import * as env from 'env-var';
 
-export const getEnv = () => ({
-  REGION: env.get('REGION').required().asString(),
-  STAGE: env.get('STAGE').required().asString(),
-  TELEGRAM_QUEUE_URL: env.get('TELEGRAM_QUEUE_URL').required().asString(),
-  TELEGRAM_SECRET_NAME: env.get('TELEGRAM_SECRET_NAME').required().asString(),
-});
+const envVarsConfig = {
+  REGION: { required: true },
+  STAGE: { required: true },
+  TELEGRAM_QUEUE_URL: { required: true },
+  TELEGRAM_SECRET_NAME: { required: true },
+  TELEGRAM_SECRET_HEADER: { required: false, default: 'X-Telegram-Bot-Api-Secret-Token' },
+} as const;
+
+type EnvVar = keyof typeof envVarsConfig;
+
+export const getEnv = (): Record<EnvVar, string> => {
+  return Object.entries(envVarsConfig).reduce((acc, [key, config]) => {
+    const envKey = key as EnvVar;
+    const value = config.required
+      ? env.get(envKey).required().asString()
+      : env.get(envKey).default(config.default || '').asString();
+    acc[envKey] = value;
+    return acc;
+  }, {} as Record<EnvVar, string>);
+};

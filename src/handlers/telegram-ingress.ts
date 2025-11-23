@@ -4,7 +4,6 @@ import { logger } from '../shared/logger';
 import { getEnv } from '../shared/env';
 import { validateTelegramSecret } from '../shared/secrets';
 import { Maybe } from 'purify-ts/Maybe';
-import KEYS from '../shared/keys';
 import { UnauthorizedError, BadRequestError, getErrorResponse } from '../shared/errors';
 
 const env = getEnv();
@@ -16,7 +15,7 @@ export const handler = async (
   try {
     logger.debug('Telegram webhook received', { body: event.body });
 
-    const secretToken = event.headers[KEYS.TELEGRAM_SECRET_HEADER];
+    const secretToken = event.headers[env.TELEGRAM_SECRET_HEADER];
     
     const validationResult = await validateTelegramSecret(Maybe.fromNullable(secretToken)).run();
     if (validationResult.isLeft()) {

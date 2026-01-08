@@ -10,6 +10,11 @@ const secretsClient = new SecretsManagerClient({ region: env.REGION });
 
 let cachedSecret: Maybe<string> = Maybe.empty();
 
+// For testing: clear the cached secret
+export function clearSecretCache(): void {
+  cachedSecret = Maybe.empty();
+}
+
 export async function getTelegramSecret(): Promise<Either<string, string>> {
   if (cachedSecret.isJust()) {
     logger.debug('Using cached Telegram secret');
@@ -40,15 +45,45 @@ export async function getTelegramSecret(): Promise<Either<string, string>> {
   }
 }
 
-export function validateTelegramSecret(providedSecret: Maybe<string>): EitherAsync<string, boolean> {
+export type SecretValidationError = 
+  | { type: 'AWS_ERROR'; message: string }  // Secrets Manager failure (500)
+  | { type: 'NO_SECRET_PROVIDED'; message: string }  // Missing header (401)
+  | { type: 'INVALID_TOKEN'; message: string };  // Wrong token (401)
+
+export function validateTelegramSecret(providedSecret: Maybe<string>): EitherAsync<SecretValidationError, boolean> {
+    // First, check if secret was provided
+    if (providedSecret.isNothing()) {
+        const error: SecretValidationError = { 
+            type: 'NO_SECRET_PROVIDED', 
+            message: 'No secret token provided in request headers' 
+        };
+        logger.error('Failed to validate secret', { error: error.message });
+        return EitherAsync.liftEither(Left(error));
+    }
+
     return EitherAsync.fromPromise(() => getTelegramSecret())
-        .chain(expectedSecret => 
-            EitherAsync.liftEither(
-                providedSecret
-                    .map(provided => provided === expectedSecret)
-                    .toEither('No secret provided')
-            )
-        )
-        .ifRight(isValid => logger.debug('Telegram secret validation result', { isValid }))
-        .ifLeft(error => logger.error('Failed to validate secret', { error }));
+        .mapLeft((awsError): SecretValidationError => {
+            const error: SecretValidationError = {
+                type: 'AWS_ERROR',
+                message: awsError
+            };
+            logger.error('Failed to validate secret', { error: error.message });
+            return error;
+        })
+        .chain(expectedSecret => {
+            const provided = providedSecret.extract();
+            const isValid = provided === expectedSecret;
+            
+            if (isValid) {
+                logger.debug('Telegram secret validation result', { isValid: true });
+                return EitherAsync.liftEither(Right(true));
+            } else {
+                const error: SecretValidationError = {
+                    type: 'INVALID_TOKEN',
+                    message: 'Secret token does not match expected value'
+                };
+                logger.error('Failed to validate secret', { error: error.message });
+                return EitherAsync.liftEither(Left(error));
+            }
+        });
 }

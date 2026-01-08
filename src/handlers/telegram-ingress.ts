@@ -4,7 +4,7 @@ import { logger } from '../shared/logger';
 import { getEnv } from '../shared/env';
 import { validateTelegramSecret } from '../shared/secrets';
 import { Maybe } from 'purify-ts/Maybe';
-import { UnauthorizedError, BadRequestError, getErrorResponse } from '../shared/errors';
+import { UnauthorizedError, BadRequestError, InternalServerError, getErrorResponse } from '../shared/errors';
 
 const env = getEnv();
 const sqsClient = new SQSClient({ region: env.REGION });
@@ -19,11 +19,16 @@ export const handler = async (
     
     const validationResult = await validateTelegramSecret(Maybe.fromNullable(secretToken)).run();
     if (validationResult.isLeft()) {
-      throw new UnauthorizedError(validationResult.extract());
-    }
-    
-    if (!validationResult.extract()) {
-      throw new UnauthorizedError('Invalid secret token');
+      const error = validationResult.extract();
+      
+      // Distinguish between AWS failures (500) and auth failures (401)
+      if (error.type === 'AWS_ERROR') {
+        logger.error('Failed to validate secret', { error: error.message });
+        throw new InternalServerError(error.message);
+      } else {
+        logger.error('Failed to validate secret', { error: error.message });
+        throw new UnauthorizedError(error.message);
+      }
     }
 
     if (!event.body) {

@@ -26,7 +26,7 @@ export const telegramFixtures = {
         type: 'private',
       },
       date: 1700000000,
-      text: '/start',
+      text: 'Hello from test user!',
     },
   },
 
@@ -151,3 +151,10 @@ export const errorFixtures = {
     },
   },
 };
+
+// Export individual fixtures for convenience
+export const textMessage = telegramFixtures.textMessage;
+export const startCommand = telegramFixtures.startCommand;
+export const numericMessage = telegramFixtures.numericMessage;
+export const callbackQuery = telegramFixtures.callbackQuery;
+export const editedMessage = telegramFixtures.editedMessage;

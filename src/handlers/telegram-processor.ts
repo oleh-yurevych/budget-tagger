@@ -1,8 +1,10 @@
-import { SQSEvent, SQSRecord } from 'aws-lambda';
+import { SQSEvent, SQSRecord, SQSBatchResponse } from 'aws-lambda';
 import { logger } from '../shared/logger';
 
-export const handler = async (event: SQSEvent): Promise<void> => {
+export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
   logger.info('Processing Telegram messages', { messageCount: event.Records.length });
+
+  const batchItemFailures: SQSBatchResponse['batchItemFailures'] = [];
 
   for (const record of event.Records) {
     try {
@@ -12,10 +14,12 @@ export const handler = async (event: SQSEvent): Promise<void> => {
         messageId: record.messageId,
         error,
       });
-      // Throw error to trigger DLQ flow after max retries
-      throw error;
+      // Add to batch failures for DLQ processing
+      batchItemFailures.push({ itemIdentifier: record.messageId });
     }
   }
+
+  return { batchItemFailures };
 };
 
 async function processMessage(record: SQSRecord): Promise<void> {

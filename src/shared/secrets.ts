@@ -6,13 +6,26 @@ import { logger } from './logger';
 import { getEnv } from './env';
 
 const env = getEnv();
-const secretsClient = new SecretsManagerClient({ region: env.REGION });
+
+// Lazy initialization to allow environment variables to be set in tests
+let secretsClient: SecretsManagerClient | null = null;
+
+function getSecretsClient(): SecretsManagerClient {
+  if (!secretsClient) {
+    secretsClient = new SecretsManagerClient({ 
+      region: env.REGION,
+      ...(process.env.AWS_ENDPOINT && { endpoint: process.env.AWS_ENDPOINT })
+    });
+  }
+  return secretsClient;
+}
 
 let cachedSecret: Maybe<string> = Maybe.empty();
 
-// For testing: clear the cached secret
+// For testing: clear the cached secret and force re-initialization of client
 export function clearSecretCache(): void {
   cachedSecret = Maybe.empty();
+  secretsClient = null;
 }
 
 export async function getTelegramSecret(): Promise<Either<string, string>> {
@@ -27,7 +40,7 @@ export async function getTelegramSecret(): Promise<Either<string, string>> {
     logger.info('Fetching Telegram secret from Secrets Manager', { secretName });
     
     const command = new GetSecretValueCommand({ SecretId: secretName });
-    const response = await secretsClient.send(command);
+    const response = await getSecretsClient().send(command);
     
     if (!response.SecretString) {
       logger.error('Secret value is empty');

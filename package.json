@@ -36,6 +36,7 @@
     "purify-ts": "^2.1.2"
   },
   "devDependencies": {
+    "@testcontainers/localstack": "^11.11.0",
     "@types/aws-lambda": "^8.10.136",
     "@types/nock": "^10.0.3",
     "@types/node": "^18.19.17",
@@ -49,6 +50,7 @@
     "serverless": "^3.38.0",
     "serverless-offline": "^13.3.3",
     "serverless-plugin-typescript": "^2.1.5",
+    "testcontainers": "^11.11.0",
     "typescript": "^5.3.3",
     "vitest": "^4.0.13"
   },

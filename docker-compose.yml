@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: budget-tagger-localstack
+    ports:
+      - "4566:4566"  # LocalStack Gateway
+      - "4510-4559:4510-4559"  # External services port range
+    environment:
+      - SERVICES=sqs,secretsmanager,dynamodb
+      - DEBUG=1
+      - PERSISTENCE=0
+      - EAGER_SERVICE_LOADING=1
+      - SKIP_SSL_CERT_DOWNLOAD=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./localstack-init:/etc/localstack/init/ready.d"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

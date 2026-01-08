@@ -7,7 +7,19 @@ import { Maybe } from 'purify-ts/Maybe';
 import { UnauthorizedError, BadRequestError, InternalServerError, getErrorResponse } from '../shared/errors';
 
 const env = getEnv();
-const sqsClient = new SQSClient({ region: env.REGION });
+
+// Lazy initialization to allow environment variables to be set in tests
+let sqsClient: SQSClient | null = null;
+
+function getSQSClient(): SQSClient {
+  if (!sqsClient) {
+    sqsClient = new SQSClient({ 
+      region: env.REGION,
+      ...(process.env.AWS_ENDPOINT && { endpoint: process.env.AWS_ENDPOINT })
+    });
+  }
+  return sqsClient;
+}
 
 export const handler = async (
   event: APIGatewayProxyEvent
@@ -39,7 +51,7 @@ export const handler = async (
       QueueUrl: env.TELEGRAM_QUEUE_URL,
       MessageBody: event.body,
     });
-    await sqsClient.send(command);
+    await getSQSClient().send(command);
 
     return {
       statusCode: 200,
